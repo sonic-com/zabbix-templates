@@ -1,0 +1,100 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: d90714dbec174e4f9313e86612f4d0af
+      name: Templates/Sonic/SOC
+  templates:
+    - uuid: 05143c49b3224fb9b9377c4f4318c7d5
+      template: 'SOC SSH Monitoring by Zabbix Server or Proxy'
+      name: 'SOC SSH Monitoring by Zabbix Server or Proxy'
+      description: 'Non-agent checks'
+      groups:
+        - name: Templates/Sonic/SOC
+      items:
+        - uuid: 3596d910e19e48ed96585cd06a0adcc0
+          name: 'SSH TCP Port answering performance'
+          type: SIMPLE
+          key: 'net.tcp.service.perf[ssh]'
+          delay: 3m
+          value_type: FLOAT
+          units: seconds
+          triggers:
+            - uuid: 28a306464757433a9493fa07fcc7bec4
+              expression: |
+                last(/SOC SSH Monitoring by Zabbix Server or Proxy/net.tcp.service.perf[ssh],#1)=0.0
+                and
+                last(/SOC SSH Monitoring by Zabbix Server or Proxy/net.tcp.service.perf[ssh],#2)=0.0
+              name: 'SSH down'
+              priority: HIGH
+              description: 'SSH (TCP port 22) is not returning a valid SSH banner.'
+              dependencies:
+                - name: 'SSH TCP Port down'
+                  expression: |
+                    last(/SOC SSH Monitoring by Zabbix Server or Proxy/net.tcp.service[tcp,,22],#1)=0
+                    and
+                    last(/SOC SSH Monitoring by Zabbix Server or Proxy/net.tcp.service[tcp,,22],#2)=0
+        - uuid: 8ba009a07fb84af29ee2a242d6261b00
+          name: 'SSH TCP Port answering'
+          type: SIMPLE
+          key: 'net.tcp.service[tcp,,22]'
+          delay: 3m
+          units: seconds
+          description: 'Checks that TCP port 22 is answering'
+          triggers:
+            - uuid: b46078f0658e4ab68ff064aec4049c5d
+              expression: |
+                last(/SOC SSH Monitoring by Zabbix Server or Proxy/net.tcp.service[tcp,,22],#1)=0
+                and
+                last(/SOC SSH Monitoring by Zabbix Server or Proxy/net.tcp.service[tcp,,22],#2)=0
+              name: 'SSH TCP Port down'
+              priority: HIGH
+              description: 'TCP port 22 is not answering'
+        - uuid: 77622f50c15b4a8fb0315c65b112ac63
+          name: 'SSH with key'
+          type: SSH
+          key: 'ssh.run[hostname]'
+          delay: 5m
+          history: 7d
+          trends: '0'
+          value_type: TEXT
+          params: /bin/hostname
+          authtype: PUBLIC_KEY
+          username: root
+          publickey: id_zabbix_sshcheck.pub
+          privatekey: id_zabbix_sshcheck
+          description: 'SSH''s into hosts with a key that''s locked to running /bin/hostname'
+          triggers:
+            - uuid: 214c29c7d5814a6f91863e7d04dbc541
+              expression: 'nodata(/SOC SSH Monitoring by Zabbix Server or Proxy/ssh.run[hostname],{$SSH.NODATA_TIMEOUT})=1'
+              name: 'SSH with key failing'
+              priority: AVERAGE
+              description: 'SSH with key failed for {$SSH.NODATA_TIMEOUT}'
+              dependencies:
+                - name: 'SSH down'
+                  expression: |
+                    last(/SOC SSH Monitoring by Zabbix Server or Proxy/net.tcp.service.perf[ssh],#1)=0.0
+                    and
+                    last(/SOC SSH Monitoring by Zabbix Server or Proxy/net.tcp.service.perf[ssh],#2)=0.0
+      tags:
+        - tag: component
+          value: system
+        - tag: process
+          value: sshd
+        - tag: service
+          value: ssh
+        - tag: target
+          value: ssh
+      macros:
+        - macro: '{$SSH.NODATA_TIMEOUT}'
+          value: 15m
+          description: 'Time that SSH with key fails to alert. Check is every 1m, so don''t set lower than 2m.'
+  graphs:
+    - uuid: 08ffc3e86cb342dbb41692e78e1402cc
+      name: 'SSH answer times'
+      graph_items:
+        - color: 199C0D
+          calc_fnc: ALL
+          item:
+            host: 'SOC SSH Monitoring by Zabbix Server or Proxy'
+            key: 'net.tcp.service.perf[ssh]'
+

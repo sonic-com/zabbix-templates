@@ -1,0 +1,199 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates
+    - uuid: d90714dbec174e4f9313e86612f4d0af
+      name: Templates/Sonic/SOC
+  templates:
+    - uuid: f7b1d50904024fa095fbc1be466a7a95
+      template: 'SOC MD RAID by Zabbix Agent'
+      name: 'SOC MD RAID by Zabbix Agent'
+      groups:
+        - name: Templates
+        - name: Templates/Sonic/SOC
+      discovery_rules:
+        - uuid: 6cfebae241fe46b0956048e075d82be9
+          name: 'MD RAID Discovery'
+          key: mdraid.discovery
+          delay: 1h
+          lifetime: 7d
+          item_prototypes:
+            - uuid: f5e046e2e85e4e6195ae4230b6991451
+              name: '{#MD_DEVICE} Array device #$3'
+              key: 'mdraid[{#MD_DEVICE},d,0]'
+              delay: '600'
+              history: 1d
+              trends: '0'
+              value_type: TEXT
+              tags:
+                - tag: Application
+                  value: MD_RAID
+            - uuid: 910025737703496b9c2aa16708c192de
+              name: '{#MD_DEVICE} Array device #$3'
+              key: 'mdraid[{#MD_DEVICE},d,1]'
+              delay: '600'
+              history: 1d
+              trends: '0'
+              value_type: TEXT
+              tags:
+                - tag: Application
+                  value: MD_RAID
+            - uuid: 0a0677eb771f48d2a86407cbc24aface
+              name: '{#MD_DEVICE} Number of Failed Devices'
+              key: 'mdraid[{#MD_DEVICE},e,"Failed Devices"]'
+              delay: '300'
+              history: 1d
+              trends: 1d
+              tags:
+                - tag: Application
+                  value: MD_RAID
+              trigger_prototypes:
+                - uuid: 30595a2b9dd441b79193c645e6e63799
+                  expression: 'last(/SOC MD RAID by Zabbix Agent/mdraid[{#MD_DEVICE},e,"Failed Devices"])>0'
+                  name: '{#MD_DEVICE} Number of Failed Devices'
+                  priority: AVERAGE
+                  description: 'There is a failed disk for a RAID array on this host.  Please investigate using https://wiki.noc.sonic.net/display/SD/RAID+array+failure#RAIDarrayfailure-Zabbix%22NumberofFailedDevices%22'
+            - uuid: 5d4d33765add44d18f2f4402cd9b51ee
+              name: '{#MD_DEVICE} Number of Devices'
+              key: 'mdraid[{#MD_DEVICE},e,"Raid Devices"]'
+              delay: '300'
+              history: 1d
+              trends: 1d
+              tags:
+                - tag: Application
+                  value: MD_RAID
+            - uuid: b60a2524014246ea95965bfe33f2bb8e
+              name: '{#MD_DEVICE} RAID Level'
+              key: 'mdraid[{#MD_DEVICE},e,"Raid Level"]'
+              delay: '600'
+              history: 1d
+              trends: '0'
+              value_type: TEXT
+              tags:
+                - tag: Application
+                  value: MD_RAID
+            - uuid: c2dba2c3015b49569824b86d6f5511e8
+              name: '{#MD_DEVICE} State'
+              key: 'mdraid[{#MD_DEVICE},e,"State"]'
+              delay: '300'
+              history: 1d
+              trends: '0'
+              value_type: TEXT
+              tags:
+                - tag: Application
+                  value: MD_RAID
+              trigger_prototypes:
+                - uuid: 9dd44b008e9d4bd2a9f4aba02e60ab24
+                  expression: 'find(/SOC MD RAID by Zabbix Agent/mdraid[{#MD_DEVICE},e,"State"],,,"resyncing")=1'
+                  name: '{#MD_DEVICE} RAID Resynced'
+                  priority: INFO
+                - uuid: f1a3da2693db43b6b06a6d7939dab8ae
+                  expression: |
+                    last(/SOC MD RAID by Zabbix Agent/mdraid[{#MD_DEVICE},e,"State"],#1)="resyncing"
+                    and
+                    last(/SOC MD RAID by Zabbix Agent/mdraid[{#MD_DEVICE},e,"State"],#1:now-8h)="resyncing"
+                  name: '{#MD_DEVICE} RAID resyncing for more than 8 hours'
+                  priority: AVERAGE
+                - uuid: de50d825718b42a4b1456dc41eaf7782
+                  expression: 'find(/SOC MD RAID by Zabbix Agent/mdraid[{#MD_DEVICE},e,"State"],,"regexp","(degraded|recovering|Not Started)")=1'
+                  name: '{#MD_DEVICE} RAID State'
+                  priority: AVERAGE
+            - uuid: d6b6295df81d4fcb8d739eb19e3554a7
+              name: '{#MD_DEVICE} Array Size'
+              key: 'mdraid[{#MD_DEVICE},s,"Array Size"]'
+              delay: '600'
+              history: 1d
+              trends: 1d
+              units: B
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '1024'
+              tags:
+                - tag: Application
+                  value: MD_RAID
+            - uuid: ad13fcf9a91f46acb09bdcf83e0f95cf
+              name: '{#MD_DEVICE} read operation speed'
+              key: 'vfs.dev.read[{#MD_DEVICE},operations]'
+              delay: '60'
+              value_type: FLOAT
+              units: ops
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                - tag: Application
+                  value: MD_RAID
+            - uuid: 3e1d41f07edd4c6fa041000f52257ddf
+              name: '{#MD_DEVICE} data read speed'
+              key: 'vfs.dev.read[{#MD_DEVICE},sectors]'
+              delay: '60'
+              value_type: FLOAT
+              units: sps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                - tag: Application
+                  value: MD_RAID
+            - uuid: 5efe3cac40e742ee9ac109ca9e8b3298
+              name: '{#MD_DEVICE} write operation speed'
+              key: 'vfs.dev.write[{#MD_DEVICE},operations]'
+              delay: '60'
+              value_type: FLOAT
+              units: ops
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                - tag: Application
+                  value: MD_RAID
+            - uuid: 3a081f34c722498ab1b0f50de3ef1656
+              name: '{#MD_DEVICE} data write speed'
+              key: 'vfs.dev.write[{#MD_DEVICE},sectors]'
+              delay: '60'
+              value_type: FLOAT
+              units: sps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                - tag: Application
+                  value: MD_RAID
+          graph_prototypes:
+            - uuid: 62316b21d4914f27a9bdc3b7d869a6dd
+              name: '{#MD_DEVICE} Array IO Performance'
+              width: '400'
+              ymin_type_1: FIXED
+              graph_items:
+                - drawtype: FILLED_REGION
+                  color: FF9999
+                  item:
+                    host: 'SOC MD RAID by Zabbix Agent'
+                    key: 'vfs.dev.read[{#MD_DEVICE},sectors]'
+                - sortorder: '1'
+                  drawtype: FILLED_REGION
+                  color: CCFFCC
+                  item:
+                    host: 'SOC MD RAID by Zabbix Agent'
+                    key: 'vfs.dev.write[{#MD_DEVICE},sectors]'
+                - sortorder: '2'
+                  drawtype: BOLD_LINE
+                  color: FF3333
+                  yaxisside: RIGHT
+                  item:
+                    host: 'SOC MD RAID by Zabbix Agent'
+                    key: 'vfs.dev.read[{#MD_DEVICE},operations]'
+                - sortorder: '3'
+                  drawtype: BOLD_LINE
+                  color: 00DD00
+                  yaxisside: RIGHT
+                  item:
+                    host: 'SOC MD RAID by Zabbix Agent'
+                    key: 'vfs.dev.write[{#MD_DEVICE},operations]'
+

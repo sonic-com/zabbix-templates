@@ -1,0 +1,22 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: c1d5e259a4e74b0f8d7c1cad2419826a
+      name: 'Templates/Data Center'
+    - uuid: 3dcd5bbe90534f9e8eb5c2d53756af63
+      name: Templates/Power
+    - uuid: d90714dbec174e4f9313e86612f4d0af
+      name: Templates/Sonic/SOC
+  templates:
+    - uuid: 96743da2eae1461c9c7d4323a6f3eb42
+      template: 'SOC APC PDU'
+      name: 'SOC APC PDU'
+      description: 'Aka "VPM"'
+      templates:
+        - name: 'APC PDU'
+        - name: 'ICMP Ping'
+      groups:
+        - name: 'Templates/Data Center'
+        - name: Templates/Power
+        - name: Templates/Sonic/SOC
+

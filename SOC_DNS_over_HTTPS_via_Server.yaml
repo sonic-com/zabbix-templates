@@ -1,0 +1,135 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: d90714dbec174e4f9313e86612f4d0af
+      name: Templates/Sonic/SOC
+  templates:
+    - uuid: 203ebb19e53e445e861e2530853d7a97
+      template: 'SOC DNS over HTTPS via Server'
+      name: 'SOC DNS over HTTPS via Server'
+      groups:
+        - name: Templates/Sonic/SOC
+      items:
+        - uuid: 4c0b0c09c9c04ea58a362300e7424e56
+          name: 'DNS Check www.google.com DoH Rcode'
+          type: DEPENDENT
+          key: 'dnslookup.doh.rcode[www.google.com]'
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Rcode
+          master_item:
+            key: 'dnslookup.sh[www.google.com,https://{HOST.CONN}/dns-query]'
+          tags:
+            - tag: Application
+              value: dns
+          triggers:
+            - uuid: b77ab056c7c849878aea01af7e8f98df
+              expression: 'last(/SOC DNS over HTTPS via Server/dnslookup.doh.rcode[www.google.com],#1)<>0'
+              name: 'DNS Failure www.google.com over HTTPS'
+              priority: WARNING
+              dependencies:
+                - name: 'DNS Failure www.sonic.com over HTTPS'
+                  expression: 'last(/SOC DNS over HTTPS via Server/dnslookup.doh.rcode[www.sonic.com],#1)<>0'
+                - name: 'DNS Failure www.sonic.net DNS over HTTPS'
+                  expression: 'last(/SOC DNS over HTTPS via Server/dnslookup.doh.rcode[www.sonic.net])<>0'
+              tags:
+                - tag: Application
+                  value: dns
+        - uuid: 74d8f08732874c8a80ae93f24f7714b1
+          name: 'DNS Check www.sonic.com DoH Rcode'
+          type: DEPENDENT
+          key: 'dnslookup.doh.rcode[www.sonic.com]'
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Rcode
+          master_item:
+            key: 'dnslookup.sh[www.sonic.com,https://{HOST.CONN}/dns-query]'
+          tags:
+            - tag: Application
+              value: dns
+          triggers:
+            - uuid: 5349793029f646738fa0f6fc80aa3e0c
+              expression: 'last(/SOC DNS over HTTPS via Server/dnslookup.doh.rcode[www.sonic.com],#1)<>0'
+              name: 'DNS Failure www.sonic.com over HTTPS'
+              priority: AVERAGE
+              tags:
+                - tag: Application
+                  value: dns
+        - uuid: 321eb96fb6a44069b0428aa504d521c0
+          name: 'DNS Check www.sonic.net DoH Rcode'
+          type: DEPENDENT
+          key: 'dnslookup.doh.rcode[www.sonic.net]'
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Rcode
+          master_item:
+            key: 'dnslookup.sh[www.sonic.net,https://{HOST.CONN}/dns-query]'
+          tags:
+            - tag: Application
+              value: dns
+          triggers:
+            - uuid: 74be8dd4b77d45adb925a06a6a836ddd
+              expression: 'last(/SOC DNS over HTTPS via Server/dnslookup.doh.rcode[www.sonic.net])<>0'
+              name: 'DNS Failure www.sonic.net DNS over HTTPS'
+              priority: AVERAGE
+              dependencies:
+                - name: 'DNS Failure www.sonic.com over HTTPS'
+                  expression: 'last(/SOC DNS over HTTPS via Server/dnslookup.doh.rcode[www.sonic.com],#1)<>0'
+              tags:
+                - tag: Application
+                  value: dns
+        - uuid: 7b0ffffa1ecb461d8ccf28fbbc29ce88
+          name: 'DNS Check www.google.com DNS over HTTPS raw'
+          type: EXTERNAL
+          key: 'dnslookup.sh[www.google.com,https://{HOST.CONN}/dns-query]'
+          delay: 15m
+          history: 1d
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - '3600'
+          tags:
+            - tag: Application
+              value: dns
+        - uuid: 09f3e48b22b9452fad83621d188f5670
+          name: 'DNS Check www.sonic.com DNS over HTTPS raw'
+          type: EXTERNAL
+          key: 'dnslookup.sh[www.sonic.com,https://{HOST.CONN}/dns-query]'
+          delay: 15m
+          history: 1d
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - '3600'
+          tags:
+            - tag: Application
+              value: dns
+        - uuid: e8ab7a46d3a3420cab779db9ec7816cd
+          name: 'DNS Check www.sonic.net DNS over HTTPS raw'
+          type: EXTERNAL
+          key: 'dnslookup.sh[www.sonic.net,https://{HOST.CONN}/dns-query]'
+          delay: 15m
+          history: 1d
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - '3600'
+          tags:
+            - tag: Application
+              value: dns
+      tags:
+        - tag: Application
+          value: dns
+

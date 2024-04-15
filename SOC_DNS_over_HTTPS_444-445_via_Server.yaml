@@ -1,0 +1,93 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: d90714dbec174e4f9313e86612f4d0af
+      name: Templates/Sonic/SOC
+  templates:
+    - uuid: c2f936062c2b41188c5a2d2988e3c885
+      template: 'SOC DNS over HTTPS 444-445 via Server'
+      name: 'SOC DNS over HTTPS 444-445 via Server'
+      groups:
+        - name: Templates/Sonic/SOC
+      items:
+        - uuid: db82d26e508b4241ac1fc48efe683391
+          name: 'DNS Check www.sonic.net DoH port 444 Rcode'
+          type: DEPENDENT
+          key: 'dnslookup.doh.rcode.444[www.sonic.net]'
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Rcode
+          master_item:
+            key: 'dnslookup.sh[www.sonic.net,https://{HOST.CONN}:444/dns-query]'
+          tags:
+            - tag: Application
+              value: dns
+          triggers:
+            - uuid: 40590490725342348bc6a256b9b6396a
+              expression: 'last(/SOC DNS over HTTPS 444-445 via Server/dnslookup.doh.rcode.444[www.sonic.net])<>0'
+              name: 'DNS Failure www.sonic.net DNS over HTTPS port 444'
+              priority: HIGH
+              dependencies:
+                - name: 'DNS Failure www.sonic.com over HTTPS port 445'
+                  expression: 'last(/SOC DNS over HTTPS 444-445 via Server/dnslookup.doh.rcode.445[www.sonic.com],#1)<>0'
+              tags:
+                - tag: Application
+                  value: dns
+        - uuid: f0776a0f14b44aa6b07b0e3a97df8266
+          name: 'DNS Check www.sonic.com DoH Rcode'
+          type: DEPENDENT
+          key: 'dnslookup.doh.rcode.445[www.sonic.com]'
+          delay: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.Rcode
+          master_item:
+            key: 'dnslookup.sh[www.sonic.com,https://{HOST.CONN}:445/dns-query]'
+          tags:
+            - tag: Application
+              value: dns
+          triggers:
+            - uuid: eae9fafe15794102b6e405ad80894310
+              expression: 'last(/SOC DNS over HTTPS 444-445 via Server/dnslookup.doh.rcode.445[www.sonic.com],#1)<>0'
+              name: 'DNS Failure www.sonic.com over HTTPS port 445'
+              priority: HIGH
+              tags:
+                - tag: Application
+                  value: dns
+        - uuid: 1c64067885cf4c25ac7ab342982be047
+          name: 'DNS Check www.sonic.com DNS over HTTPS port 445 raw'
+          type: EXTERNAL
+          key: 'dnslookup.sh[www.sonic.com,https://{HOST.CONN}:445/dns-query]'
+          delay: 15m
+          history: 1d
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - '3600'
+          tags:
+            - tag: Application
+              value: dns
+        - uuid: a7c74807071f48af9b1fb7eec9afe5b8
+          name: 'DNS Check www.sonic.net DNS over HTTPS port 444 raw'
+          type: EXTERNAL
+          key: 'dnslookup.sh[www.sonic.net,https://{HOST.CONN}:444/dns-query]'
+          delay: 15m
+          history: 1d
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - '3600'
+          tags:
+            - tag: Application
+              value: dns
+      tags:
+        - tag: Application
+          value: dns
+

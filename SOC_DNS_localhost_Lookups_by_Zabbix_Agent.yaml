@@ -1,0 +1,73 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: d90714dbec174e4f9313e86612f4d0af
+      name: Templates/Sonic/SOC
+  templates:
+    - uuid: 80975b5a329a422d9bed28e11191ce2d
+      template: 'SOC DNS localhost Lookups by Zabbix Agent'
+      name: 'SOC DNS localhost Lookups by Zabbix Agent'
+      description: 'DNS Lookups of various things'
+      groups:
+        - name: Templates/Sonic/SOC
+      items:
+        - uuid: 3f1c4ad6ff4f4a2ab71689e41b3138e4
+          name: 'DNS Check localhost www.google.com UDP'
+          key: 'net.dns[127.0.0.1,www.google.com,A,,,udp]'
+          tags:
+            - tag: Application
+              value: dns
+          triggers:
+            - uuid: 7e50add809e646e28311a1e24aa21b77
+              expression: 'last(/SOC DNS localhost Lookups by Zabbix Agent/net.dns[127.0.0.1,www.google.com,A,,,udp],#1)=0'
+              name: 'DNS Check localhost www.google.com UDP'
+              priority: AVERAGE
+              tags:
+                - tag: Application
+                  value: DNS
+        - uuid: cd88550c0eac4bb0a9f78e251191db02
+          name: 'DNS Check localhost www.sonic.com TCP'
+          key: 'net.dns[127.0.0.1,www.sonic.com,A,,,tcp]'
+          tags:
+            - tag: Application
+              value: dns
+          triggers:
+            - uuid: f317808f80d9406b94977c964475c7fd
+              expression: 'last(/SOC DNS localhost Lookups by Zabbix Agent/net.dns[127.0.0.1,www.sonic.com,A,,,tcp],#1)=0'
+              name: 'DNS Failure localhost www.sonic.com TCP'
+              priority: HIGH
+              tags:
+                - tag: Application
+                  value: DNS
+        - uuid: bd420ee8d6c241059dc07d42ebff1554
+          name: 'DNS Check localhost www.sonic.com UDP'
+          key: 'net.dns[127.0.0.1,www.sonic.com,A,,,udp]'
+          tags:
+            - tag: Application
+              value: dns
+          triggers:
+            - uuid: 7b7db81c355e47f2b550d9f3537baced
+              expression: 'last(/SOC DNS localhost Lookups by Zabbix Agent/net.dns[127.0.0.1,www.sonic.com,A,,,udp],#1)=0'
+              name: 'DNS Failure localhost www.sonic.com UDP'
+              priority: HIGH
+              tags:
+                - tag: Application
+                  value: DNS
+        - uuid: a7e7a206cfcf4c849296f933fe2440dd
+          name: 'DNS Check localhost www.sonic.net UDP'
+          key: 'net.dns[127.0.0.1,www.sonic.net,A,,,udp]'
+          tags:
+            - tag: Application
+              value: dns
+          triggers:
+            - uuid: 53427007943747d6909f531fe13d3346
+              expression: 'last(/SOC DNS localhost Lookups by Zabbix Agent/net.dns[127.0.0.1,www.sonic.net,A,,,udp],#1)=0'
+              name: 'DNS Failure localhost www.sonic.net UDP'
+              priority: HIGH
+              tags:
+                - tag: Application
+                  value: DNS
+      tags:
+        - tag: Application
+          value: dns
+

@@ -1,0 +1,14 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: d90714dbec174e4f9313e86612f4d0af
+      name: Templates/Sonic/SOC
+  templates:
+    - uuid: 968be3b7cba440818ead0c88d921d1e0
+      template: 'SOC nspod by Zabbix Agent'
+      name: 'SOC nspod by Zabbix Agent'
+      templates:
+        - name: 'SOC DNS localhost Lookups by Zabbix Agent'
+      groups:
+        - name: Templates/Sonic/SOC
+

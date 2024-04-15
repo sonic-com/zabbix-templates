@@ -1,0 +1,205 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: d90714dbec174e4f9313e86612f4d0af
+      name: Templates/Sonic/SOC
+  templates:
+    - uuid: 416b2ebb14444e9c9a47df3eb424511c
+      template: 'SOC Duo Auth Proxy'
+      name: 'SOC Duo Auth Proxy'
+      description: 'LDAP listening, I guess...'
+      templates:
+        - name: 'Website certificate by Zabbix agent 2'
+      groups:
+        - name: Templates/Sonic/SOC
+      items:
+        - uuid: 2c31fce1e0c145329ad97b05ecec28d9
+          name: 'LDAP (389) TCP port Listening'
+          key: 'net.tcp.listen[389]'
+          history: 14d
+          triggers:
+            - uuid: fbf6488b65f44888befc487a4034c069
+              expression: 'last(/SOC Duo Auth Proxy/net.tcp.listen[389],#1)=0'
+              name: 'LDAP TCP port 389 not Listening'
+              priority: AVERAGE
+              dependencies:
+                - name: 'Service duoauthproxy not running'
+                  expression: 'last(/SOC Duo Auth Proxy/systemd.unit.info[duoauthproxy.service,SubState],#1)<>"running"'
+        - uuid: 135ed0b44615460eb2f2fbd60b2a3012
+          name: 'LDAPS (636) TCP port Listening'
+          key: 'net.tcp.listen[636]'
+          history: 14d
+          triggers:
+            - uuid: f797747e703c47feb6048c5a544157a4
+              expression: 'last(/SOC Duo Auth Proxy/net.tcp.listen[636],#1)=0'
+              name: 'LDAPS TCP port 636 not Listening'
+              priority: AVERAGE
+              dependencies:
+                - name: 'Service duoauthproxy not running'
+                  expression: 'last(/SOC Duo Auth Proxy/systemd.unit.info[duoauthproxy.service,SubState],#1)<>"running"'
+        - uuid: cfa08e16baa242eeb3ec6fe52d01396c
+          name: 'LDAP (389) TCP port reachable'
+          type: SIMPLE
+          key: 'net.tcp.service[ldap,,389]'
+          history: 14d
+          triggers:
+            - uuid: a3b3f58a9ee9433e846b1649e041cb8c
+              expression: 'last(/SOC Duo Auth Proxy/net.tcp.service[ldap,,389],#1)=0'
+              name: 'LDAP TCP port 389 not reachable or not functioning'
+              priority: AVERAGE
+              description: |
+                This checks for basic LDAP functionality on the port.
+                
+                https://www.zabbix.com/documentation/current/en/manual/appendix/items/service_check_details
+              dependencies:
+                - name: 'Service duoauthproxy not running'
+                  expression: 'last(/SOC Duo Auth Proxy/systemd.unit.info[duoauthproxy.service,SubState],#1)<>"running"'
+        - uuid: 59df3398d8e2404e862bde6e1238db95
+          name: 'LDAPS (636) TCP port reachable'
+          type: SIMPLE
+          key: 'net.tcp.service[tcp,,636]'
+          history: 14d
+          triggers:
+            - uuid: 2dc3b5e918584fe9baaae7d16dbe88fb
+              expression: 'last(/SOC Duo Auth Proxy/net.tcp.service[tcp,,636],#1)=0'
+              name: 'LDAPS TCP port 636 not reachable or not functioning'
+              priority: AVERAGE
+              description: |
+                This checks for basic LDAP functionality on the port.
+                
+                https://www.zabbix.com/documentation/current/en/manual/appendix/items/service_check_details
+              dependencies:
+                - name: 'Service duoauthproxy not running'
+                  expression: 'last(/SOC Duo Auth Proxy/systemd.unit.info[duoauthproxy.service,SubState],#1)<>"running"'
+        - uuid: d3fd559ad5e6419c8802bb8fb2e7f709
+          name: 'Service duoauthproxy state'
+          key: 'systemd.unit.info[duoauthproxy.service,SubState]'
+          history: 14d
+          trends: '0'
+          value_type: TEXT
+          triggers:
+            - uuid: bfd127b24fc141feb43f2e16162c5ad2
+              expression: 'last(/SOC Duo Auth Proxy/systemd.unit.info[duoauthproxy.service,SubState],#1)<>"running"'
+              name: 'Service duoauthproxy not running'
+              priority: AVERAGE
+      discovery_rules:
+        - uuid: f2e433810a2b4c61bbd93216bba74f41
+          name: 'LDAP/S Listening TCP port discovery'
+          key: ss.tcp.listening
+          delay: 1h
+          item_prototypes:
+            - uuid: f66ffdab56144403aca31ed194213107
+              name: 'LDAP/S Port {#PORT} Listening'
+              key: 'net.tcp.listen[{#PORT}]'
+              history: 14d
+              trigger_prototypes:
+                - uuid: 49443020cf7c480889ed9b53470b7464
+                  expression: 'last(/SOC Duo Auth Proxy/net.tcp.listen[{#PORT}],#1)=0'
+                  name: 'LDAP/S Port {#PORT} is down (not listening)'
+                  priority: AVERAGE
+                  manual_close: 'YES'
+                  dependencies:
+                    - name: 'LDAP TCP port 389 not Listening'
+                      expression: 'last(/SOC Duo Auth Proxy/net.tcp.listen[389],#1)=0'
+                    - name: 'LDAP TCP port 389 not reachable or not functioning'
+                      expression: 'last(/SOC Duo Auth Proxy/net.tcp.service[ldap,,389],#1)=0'
+                    - name: 'Service duoauthproxy not running'
+                      expression: 'last(/SOC Duo Auth Proxy/systemd.unit.info[duoauthproxy.service,SubState],#1)<>"running"'
+            - uuid: fdf5cc7f2c704ff8a474574949871110
+              name: 'LDAP/S TCP port {#PORT} answer performance'
+              type: SIMPLE
+              key: 'net.tcp.service.perf[tcp,,{#PORT}]'
+              history: 14d
+              value_type: FLOAT
+            - uuid: 53891823f5484f4497532269bf8da11a
+              name: 'LDAP TCP port {#PORT} answering'
+              type: SIMPLE
+              key: 'net.tcp.service[ldap,,{#PORT}]'
+              history: 14d
+              discover: NO_DISCOVER
+              trigger_prototypes:
+                - uuid: 1087c4f316ea4a6dbd327d56da8f42ab
+                  expression: 'last(/SOC Duo Auth Proxy/net.tcp.service[ldap,,{#PORT}],#1)=0'
+                  name: 'LDAP port {#PORT} not functioning'
+                  discover: NO_DISCOVER
+                  priority: AVERAGE
+                  description: |
+                    This checks that the port is answering (from local agent), and does a basic LDAP functionality test.
+                    
+                    https://www.zabbix.com/documentation/current/en/manual/appendix/items/service_check_details
+                  dependencies:
+                    - name: 'LDAP/S Port {#PORT} is down (not listening)'
+                      expression: 'last(/SOC Duo Auth Proxy/net.tcp.listen[{#PORT}],#1)=0'
+                    - name: 'LDAP/S port {#PORT} not reachable'
+                      expression: 'last(/SOC Duo Auth Proxy/net.tcp.service[tcp,,{#PORT}],#1)=0'
+            - uuid: 2e2d7938d20444789e01829f25554a35
+              name: 'LDAP/S TCP port {#PORT} answering'
+              type: SIMPLE
+              key: 'net.tcp.service[tcp,,{#PORT}]'
+              history: 14d
+              trigger_prototypes:
+                - uuid: ab80bd26dcbc4db0850a245952339752
+                  expression: 'last(/SOC Duo Auth Proxy/net.tcp.service[tcp,,{#PORT}],#1)=0'
+                  name: 'LDAP/S port {#PORT} not reachable'
+                  priority: AVERAGE
+                  description: |
+                    This checks that the port is answering (from local agent), and does a basic LDAP functionality test.
+                    
+                    https://www.zabbix.com/documentation/current/en/manual/appendix/items/service_check_details
+                  dependencies:
+                    - name: 'LDAP/S Port {#PORT} is down (not listening)'
+                      expression: 'last(/SOC Duo Auth Proxy/net.tcp.listen[{#PORT}],#1)=0'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  // Based on https://blog.zabbix.com/automatic-tcp-port-monitoring/11652/
+                  // Discovery Listening TCP ports that start with 389 or 636
+                  var lld = [];
+                  var lines = value.match(/:(389|636)[0-9]+ /gm).reduce(function(a,b){if(a.indexOf(b) < 0)a.push(b);return a;},[]).join("\n").replace(/:/g,"").replace(/ /g,"").split("\n");
+                  var lines_num = lines.length;
+                  for (i = 0; i < lines_num; i++)
+                  {
+                      var row = {};
+                      row["{#PORT}"] = lines[i]
+                      lld.push(row);
+                  }
+                  return JSON.stringify(lld);
+          overrides:
+            - name: 'Enable ldap-protocol checks on LDAP (not LDAPS) ports'
+              step: '1'
+              filter:
+                conditions:
+                  - macro: '{#PORT}'
+                    value: ^389
+                    formulaid: A
+              operations:
+                - operationobject: ITEM_PROTOTYPE
+                  operator: REGEXP
+                  value: 'LDAP TCP.*answering'
+                  status: ENABLED
+                  discover: DISCOVER
+                - operationobject: TRIGGER_PROTOTYPE
+                  value: 'LDAP.*functioning'
+                  status: ENABLED
+                  discover: DISCOVER
+      tags:
+        - tag: component
+          value: ldap
+        - tag: component
+          value: mfa
+        - tag: component
+          value: security
+        - tag: process
+          value: duoauthproxy
+      macros:
+        - macro: '{$CERT.WEBSITE.HOSTNAME}'
+          value: duoauthproxy.noc.sonic.net
+          description: 'The website DNS name for the connection.'
+        - macro: '{$CERT.WEBSITE.IP}'
+          value: 127.0.0.1
+          description: 'The website IP address for the connection.'
+        - macro: '{$CERT.WEBSITE.PORT}'
+          value: '636'
+          description: 'The TLS/SSL port number of the website.'
+

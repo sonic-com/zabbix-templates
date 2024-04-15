@@ -1,0 +1,715 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  host_groups:
+    - uuid: e4c6709965744d84845a2ad59008f1c4
+      name: ALL
+    - uuid: 1b837a3c078647049a0c00c61b4d57b5
+      name: Hypervisors
+    - uuid: c0b3f0e9101742ba9e39c0631f5d4275
+      name: Hypervisors/ESX
+    - uuid: 137f19e6e2dc4219b33553b812627bc2
+      name: 'Virtual machines'
+  templates:
+    - uuid: ca02e82e6c414d0aa7aedc8d78468a49
+      template: 'VMware FQDN'
+      name: 'VMware FQDN'
+      description: |
+        You can discuss this template or leave feedback on our forum https://www.zabbix.com/forum/zabbix-suggestions-and-feedback/
+        
+        Template tooling version used: 0.41
+      vendor:
+        name: Zabbix
+        version: 6.4-0
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 1811814b47f044b8bc56d282579d5397
+          name: 'VMware: vCenter alarms'
+          type: SIMPLE
+          key: 'vmware.alarms.get[{$VMWARE.URL}]'
+          history: 30d
+          trends: '0'
+          value_type: TEXT
+          username: '{$VMWARE.USERNAME}'
+          password: '{$VMWARE.PASSWORD}'
+          description: 'VMware service full name.'
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          tags:
+            - tag: component
+              value: raw
+            - tag: component
+              value: system
+            - tag: component
+              value: vcenter
+        - uuid: 35ecdf16f09e4b1a9244e77783c8e667
+          name: 'vCenter Red Alarms'
+          type: DEPENDENT
+          key: 'vmware.alarms.red[*]'
+          delay: '0'
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$[?((@.overall_status == "red") && (!(@.name =~ "{$VMWARE.ALARMS.IGNORE}")) && (!(@.name =~ "{$VMWARE.ALARMS.DOWNGRADE}")) )]'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          master_item:
+            key: 'vmware.alarms.get[{$VMWARE.URL}]'
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: 3e6a0858a34748a79612809c329d02a3
+              expression: 'last(/VMware FQDN/vmware.alarms.red[*]) <> "[]"'
+              name: 'vCenter Red Alarms'
+              opdata: '{ITEM.LASTVALUE1}'
+              priority: DISASTER
+              description: |
+                vCenter is showing at least 1 red alarm.
+                
+                {ITEM.LASTVALUE1}
+              tags:
+                - tag: component
+                  value: vcenter
+                - tag: scope
+                  value: availability
+                - tag: scope
+                  value: performance
+                - tag: sonic-alert-routing
+                  value: vmware
+        - uuid: f225b2683a5a4c2db4eb047fe4729572
+          name: 'VMware: Yellow Alarms'
+          type: DEPENDENT
+          key: 'vmware.alarms.yellow[*]'
+          delay: '0'
+          trends: '0'
+          value_type: TEXT
+          description: 'Yellow alarms and red alarms we downgraded to yellow'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$[?((!(@.name =~ "{$VMWARE.ALARMS.IGNORE}")) && ((@.overall_status == "yellow") || ((@.overall_status == "red") && (@.name =~ "{$VMWARE.ALARMS.DOWNGRADE}"))))]'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          master_item:
+            key: 'vmware.alarms.get[{$VMWARE.URL}]'
+          triggers:
+            - uuid: 15713a789a6f4de0be918450c674f1e2
+              expression: 'last(/VMware FQDN/vmware.alarms.yellow[*]) <> "[]"'
+              name: 'vCenter Yellow Alarms'
+              opdata: '{ITEM.LASTVALUE1}'
+              priority: AVERAGE
+              description: 'vCenter is either showing yellow alarms, or has red alarms that we downgrade to yellow (for business-hours handling)'
+              tags:
+                - tag: component
+                  value: vcenter
+                - tag: scope
+                  value: availability
+                - tag: scope
+                  value: performance
+                - tag: sonic-alert-routing
+                  value: vmware
+        - uuid: 64b8a28c1a904540930ebfec5af04872
+          name: 'VMware: Event log'
+          type: SIMPLE
+          key: 'vmware.eventlog[{$VMWARE.URL},skip]'
+          history: 7d
+          trends: '0'
+          value_type: LOG
+          username: '{$VMWARE.USERNAME}'
+          password: '{$VMWARE.PASSWORD}'
+          description: 'Collect VMware event log. See also: https://www.zabbix.com/documentation/6.2/manual/config/items/preprocessing/examples#filtering_vmware_event_log_records'
+          preprocessing:
+            - type: NOT_MATCHES_REGEX
+              parameters:
+                - '^User VSPHERE.LOCAL\\(mon|zabbix)@10.76.12.111 logged (out|in)'
+              error_handler: DISCARD_VALUE
+          tags:
+            - tag: component
+              value: log
+        - uuid: ebb8417eceb541b1b51909c745642f05
+          name: 'VMware: Full name'
+          type: SIMPLE
+          key: 'vmware.fullname[{$VMWARE.URL}]'
+          delay: 15m
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          username: '{$VMWARE.USERNAME}'
+          password: '{$VMWARE.PASSWORD}'
+          description: 'VMware service full name.'
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          tags:
+            - tag: component
+              value: system
+        - uuid: edfdedd78e9c4c299a1555bd13b2f677
+          name: 'VMware: Version'
+          type: SIMPLE
+          key: 'vmware.version[{$VMWARE.URL}]'
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          username: '{$VMWARE.USERNAME}'
+          password: '{$VMWARE.PASSWORD}'
+          description: 'VMware service version.'
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          tags:
+            - tag: component
+              value: system
+      discovery_rules:
+        - uuid: dc0a844c06f7456b8643f9f9672e6b8e
+          name: 'Discover VMware clusters'
+          type: SIMPLE
+          key: 'vmware.cluster.discovery[{$VMWARE.URL}]'
+          delay: 1h
+          username: '{$VMWARE.USERNAME}'
+          password: '{$VMWARE.PASSWORD}'
+          description: 'Discovery of clusters'
+          item_prototypes:
+            - uuid: 41fbb29592f9495e92d88240ce2ba7a5
+              name: 'VMware: Status of "{#CLUSTER.NAME}" cluster'
+              type: SIMPLE
+              key: 'vmware.cluster.status[{$VMWARE.URL},{#CLUSTER.NAME}]'
+              history: 7d
+              username: '{$VMWARE.USERNAME}'
+              password: '{$VMWARE.PASSWORD}'
+              description: 'VMware cluster status.'
+              valuemap:
+                name: 'VMware status'
+              tags:
+                - tag: cluster
+                  value: '{#CLUSTER.NAME}'
+                - tag: component
+                  value: cluster
+              trigger_prototypes:
+                - uuid: 25317c760f77438b8b20b74ed0091775
+                  expression: 'last(/VMware FQDN/vmware.cluster.status[{$VMWARE.URL},{#CLUSTER.NAME}])<>1'
+                  name: 'VMware: Cluster "{#CLUSTER.NAME}" health is not green'
+                  priority: WARNING
+                  dependencies:
+                    - name: 'VMware: Cluster "{#CLUSTER.NAME}" health is red'
+                      expression: 'last(/VMware FQDN/vmware.cluster.status[{$VMWARE.URL},{#CLUSTER.NAME}])=3'
+                    - name: 'VMware: Cluster "{#CLUSTER.NAME}" health is yellow'
+                      expression: 'last(/VMware FQDN/vmware.cluster.status[{$VMWARE.URL},{#CLUSTER.NAME}])=2'
+                  tags:
+                    - tag: scope
+                      value: availability
+                    - tag: scope
+                      value: performance
+                    - tag: sonic-alert-routing
+                      value: vmware
+                - uuid: 5ea60c87d7b347a7a3ca98c7cad5897b
+                  expression: 'last(/VMware FQDN/vmware.cluster.status[{$VMWARE.URL},{#CLUSTER.NAME}])=3'
+                  name: 'VMware: Cluster "{#CLUSTER.NAME}" health is red'
+                  priority: HIGH
+                  tags:
+                    - tag: scope
+                      value: availability
+                    - tag: scope
+                      value: performance
+                    - tag: sonic-alert-routing
+                      value: vmware
+                - uuid: f849deb00ce54e7cae6bb4256d614477
+                  expression: 'last(/VMware FQDN/vmware.cluster.status[{$VMWARE.URL},{#CLUSTER.NAME}])=2'
+                  name: 'VMware: Cluster "{#CLUSTER.NAME}" health is yellow'
+                  priority: AVERAGE
+                  dependencies:
+                    - name: 'VMware: Cluster "{#CLUSTER.NAME}" health is red'
+                      expression: 'last(/VMware FQDN/vmware.cluster.status[{$VMWARE.URL},{#CLUSTER.NAME}])=3'
+                  tags:
+                    - tag: scope
+                      value: availability
+                    - tag: scope
+                      value: performance
+                    - tag: sonic-alert-routing
+                      value: vmware
+        - uuid: 3cd02594ee644dbe88bdfc4f4257ae05
+          name: 'Discover VMware datastores'
+          type: SIMPLE
+          key: 'vmware.datastore.discovery[{$VMWARE.URL}]'
+          delay: 1h
+          username: '{$VMWARE.USERNAME}'
+          password: '{$VMWARE.PASSWORD}'
+          item_prototypes:
+            - uuid: 4fd480a2c9b2492aa548192360433591
+              name: 'VMware: Time until datastore {#DATASTORE} is 100% full'
+              type: CALCULATED
+              key: 'vmware.datastore.predictionl[{#DATASTORE}]'
+              delay: 15m
+              value_type: FLOAT
+              units: s
+              params: |
+                count(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],#1,"gt","1048576") * (
+                (timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],8h,0) < 1095d) * timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],8h,0) + (timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],8h,0) >= 1095d)
+                *
+                ((timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],4h,0) < 1095d) * timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],4h,0) + (timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],4h,0) >= 1095d)
+                *
+                ((timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],1h,0) < 1095d) * timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],1h,0) + (timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],1h,0) >= 1095d)
+                *
+                ((timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],15m,0) < 1095d) * timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],15m,0) + (timeleft(//vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free],15m,0) >= 1095d)
+                *
+                1095d
+                ))))
+              description: |
+                Trend prediction for when a given datastore will run out of space.
+                
+                Based on "trend prediction for VMware datastore utilization" on https://bestmonitoringtools.com/vmware-monitoring-with-zabbix-esxi-vcenter-vm-vsphere/#Step_5_Optimize_VMware_Datastore_monitoring_in_Zabbix
+            - uuid: 0ed09f26cbad4d96bea297da4215d73b
+              name: 'VMware: Average read latency of the datastore {#DATASTORE}'
+              type: SIMPLE
+              key: 'vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency]'
+              history: 7d
+              username: '{$VMWARE.USERNAME}'
+              password: '{$VMWARE.PASSWORD}'
+              description: 'Amount of time for a read operation from the datastore (milliseconds).'
+              tags:
+                - tag: component
+                  value: datastore
+                - tag: datastore
+                  value: '{#DATASTORE}'
+              trigger_prototypes:
+                - uuid: 27a2d010d4d948fbb57c140057aae9d2
+                  expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],10m)>={$VMWARE.DATASTORE.LATENCY.READ.AVG}'
+                  name: 'VMware: Average read latency of the datastore {#DATASTORE} over average limit for 10m'
+                  priority: AVERAGE
+                  dependencies:
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over high limit for 15m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],15m)>={$VMWARE.DATASTORE.LATENCY.READ.HIGH}'
+                - uuid: cf8028392f3a4d159ebcec7041ea391a
+                  expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],15m)>={$VMWARE.DATASTORE.LATENCY.READ.HIGH}'
+                  name: 'VMware: Average read latency of the datastore {#DATASTORE} over high limit for 15m'
+                  priority: HIGH
+                - uuid: 95214547ac9e4c99b7717acf2c3e6e51
+                  expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],5m)>={$VMWARE.DATASTORE.LATENCY.READ.WARN}'
+                  name: 'VMware: Average read latency of the datastore {#DATASTORE} over warn limit for 5m'
+                  priority: WARNING
+                  dependencies:
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over average limit for 10m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],10m)>={$VMWARE.DATASTORE.LATENCY.READ.AVG}'
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over high limit for 15m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],15m)>={$VMWARE.DATASTORE.LATENCY.READ.HIGH}'
+            - uuid: 988fc0ab70a04bcd9337fabbd1e86c7d
+              name: 'VMware: Free space on datastore {#DATASTORE} (bytes)'
+              type: SIMPLE
+              key: 'vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free]'
+              delay: 5m
+              history: 7d
+              value_type: FLOAT
+              units: B
+              username: '{$VMWARE.USERNAME}'
+              password: '{$VMWARE.PASSWORD}'
+              description: 'VMware datastore space in bytes available.'
+              tags:
+                - tag: component
+                  value: datastore
+                - tag: datastore
+                  value: '{#DATASTORE}'
+            - uuid: a2b1785fc773404e9ce69bcd868c5b88
+              name: 'VMware: Free space on datastore {#DATASTORE} (percentage)'
+              type: SIMPLE
+              key: 'vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},pfree]'
+              delay: 5m
+              history: 7d
+              value_type: FLOAT
+              units: '%'
+              username: '{$VMWARE.USERNAME}'
+              password: '{$VMWARE.PASSWORD}'
+              description: 'VMware datastore space in percentage from total.'
+              tags:
+                - tag: component
+                  value: datastore
+                - tag: datastore
+                  value: '{#DATASTORE}'
+              trigger_prototypes:
+                - uuid: aa443360633440b58608fa5b20b5ddab
+                  expression: 'max(/VMware FQDN/vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},pfree],15m)<5'
+                  name: 'VMware: Free space on datastore {#DATASTORE} <5%'
+                  priority: AVERAGE
+                  tags:
+                    - tag: sonic-alert-routing
+                      value: vmware
+                - uuid: 876131c7afd3423188c0d0a97714a954
+                  expression: 'last(/VMware FQDN/vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},pfree])<10'
+                  name: 'VMware: Free space on datastore {#DATASTORE} <10%'
+                  priority: WARNING
+                  dependencies:
+                    - name: 'VMware: Free space on datastore {#DATASTORE} <5%'
+                      expression: 'max(/VMware FQDN/vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},pfree],15m)<5'
+            - uuid: 78fb4b4b0eec44a99207f8354773269d
+              name: 'VMware: Total size of datastore {#DATASTORE}'
+              type: SIMPLE
+              key: 'vmware.datastore.size[{$VMWARE.URL},{#DATASTORE}]'
+              delay: 5m
+              history: 7d
+              units: B
+              username: '{$VMWARE.USERNAME}'
+              password: '{$VMWARE.PASSWORD}'
+              description: 'VMware datastore space in bytes.'
+              tags:
+                - tag: component
+                  value: datastore
+                - tag: datastore
+                  value: '{#DATASTORE}'
+            - uuid: d9570c0822cc4996a7dda1ddb9426404
+              name: 'VMware: Average write latency of the datastore {#DATASTORE}'
+              type: SIMPLE
+              key: 'vmware.datastore.write[{$VMWARE.URL},{#DATASTORE},latency]'
+              history: 7d
+              username: '{$VMWARE.USERNAME}'
+              password: '{$VMWARE.PASSWORD}'
+              description: 'Amount of time for a write operation to the datastore (milliseconds).'
+              tags:
+                - tag: component
+                  value: datastore
+                - tag: datastore
+                  value: '{#DATASTORE}'
+              trigger_prototypes:
+                - uuid: f37507ad138a4138ba16be7bd4bf2cf6
+                  expression: 'avg(/VMware FQDN/vmware.datastore.write[{$VMWARE.URL},{#DATASTORE},latency],10m)>={$VMWARE.DATASTORE.LATENCY.WRITE.AVG}'
+                  name: 'VMware: Average write latency of the datastore {#DATASTORE} over average limit for 10m'
+                  priority: AVERAGE
+                  dependencies:
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over average limit for 10m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],10m)>={$VMWARE.DATASTORE.LATENCY.READ.AVG}'
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over high limit for 15m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],15m)>={$VMWARE.DATASTORE.LATENCY.READ.HIGH}'
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over warn limit for 5m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],5m)>={$VMWARE.DATASTORE.LATENCY.READ.WARN}'
+                    - name: 'VMware: Average write latency of the datastore {#DATASTORE} over high limit for 15m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.write[{$VMWARE.URL},{#DATASTORE},latency],15m)>={$VMWARE.DATASTORE.LATENCY.WRITE.HIGH}'
+                - uuid: 8ab00ed910b94a75b1f832449ab5a7d8
+                  expression: 'avg(/VMware FQDN/vmware.datastore.write[{$VMWARE.URL},{#DATASTORE},latency],15m)>={$VMWARE.DATASTORE.LATENCY.WRITE.HIGH}'
+                  name: 'VMware: Average write latency of the datastore {#DATASTORE} over high limit for 15m'
+                  priority: HIGH
+                  dependencies:
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over average limit for 10m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],10m)>={$VMWARE.DATASTORE.LATENCY.READ.AVG}'
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over high limit for 15m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],15m)>={$VMWARE.DATASTORE.LATENCY.READ.HIGH}'
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over warn limit for 5m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],5m)>={$VMWARE.DATASTORE.LATENCY.READ.WARN}'
+                - uuid: 9174518d1263415089d04d0c39950ca7
+                  expression: 'avg(/VMware FQDN/vmware.datastore.write[{$VMWARE.URL},{#DATASTORE},latency],5m)>={$VMWARE.DATASTORE.LATENCY.WRITE.WARN}'
+                  name: 'VMware: Average write latency of the datastore {#DATASTORE} over warn limit for 5m'
+                  priority: WARNING
+                  dependencies:
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over average limit for 10m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],10m)>={$VMWARE.DATASTORE.LATENCY.READ.AVG}'
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over high limit for 15m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],15m)>={$VMWARE.DATASTORE.LATENCY.READ.HIGH}'
+                    - name: 'VMware: Average read latency of the datastore {#DATASTORE} over warn limit for 5m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency],5m)>={$VMWARE.DATASTORE.LATENCY.READ.WARN}'
+                    - name: 'VMware: Average write latency of the datastore {#DATASTORE} over average limit for 10m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.write[{$VMWARE.URL},{#DATASTORE},latency],10m)>={$VMWARE.DATASTORE.LATENCY.WRITE.AVG}'
+                    - name: 'VMware: Average write latency of the datastore {#DATASTORE} over high limit for 15m'
+                      expression: 'avg(/VMware FQDN/vmware.datastore.write[{$VMWARE.URL},{#DATASTORE},latency],15m)>={$VMWARE.DATASTORE.LATENCY.WRITE.HIGH}'
+          graph_prototypes:
+            - uuid: 0f69bbb5e0514c58899e57b155c908b6
+              name: 'Average read/write latency of the datastore {#DATASTORE}'
+              show_triggers: 'NO'
+              graph_items:
+                - drawtype: GRADIENT_LINE
+                  color: 4000FF
+                  calc_fnc: ALL
+                  item:
+                    host: 'VMware FQDN'
+                    key: 'vmware.datastore.read[{$VMWARE.URL},{#DATASTORE},latency]'
+                - sortorder: '1'
+                  color: FFBF00
+                  calc_fnc: ALL
+                  item:
+                    host: 'VMware FQDN'
+                    key: 'vmware.datastore.write[{$VMWARE.URL},{#DATASTORE},latency]'
+            - uuid: bd64e55b247748f7b077458e73c58cfd
+              name: 'Free space on datastore {#DATASTORE} (bytes)'
+              show_triggers: 'NO'
+              ymin_type_1: FIXED
+              graph_items:
+                - color: FF0000
+                  calc_fnc: ALL
+                  item:
+                    host: 'VMware FQDN'
+                    key: 'vmware.datastore.size[{$VMWARE.URL},{#DATASTORE}]'
+                - sortorder: '1'
+                  drawtype: FILLED_REGION
+                  color: 1A7C11
+                  calc_fnc: ALL
+                  item:
+                    host: 'VMware FQDN'
+                    key: 'vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},free]'
+            - uuid: 31a757c5250c49c9982664e031d3eb62
+              name: 'Free space on datastore {#DATASTORE} (percentage)'
+              show_triggers: 'NO'
+              percent_left: '10'
+              percent_right: '5'
+              graph_items:
+                - drawtype: FILLED_REGION
+                  color: 1A7C11
+                  calc_fnc: ALL
+                  item:
+                    host: 'VMware FQDN'
+                    key: 'vmware.datastore.size[{$VMWARE.URL},{#DATASTORE},pfree]'
+        - uuid: 988bb85b325449b29780eeda15c73620
+          name: 'Discover VMware hypervisors'
+          type: SIMPLE
+          key: 'vmware.hv.discovery[{$VMWARE.URL}]'
+          delay: 1h
+          username: '{$VMWARE.USERNAME}'
+          password: '{$VMWARE.PASSWORD}'
+          description: 'Discovery of hypervisors.'
+          host_prototypes:
+            - uuid: 51cf7ea3e6a74f7e8dde628dbc5347a3
+              host: '{#HV.UUID}'
+              name: '{#HV.NAME}'
+              group_links:
+                - group:
+                    name: ALL
+                - group:
+                    name: Hypervisors
+                - group:
+                    name: Hypervisors/ESX
+              group_prototypes:
+                - name: 'Sites/{#DATACENTER.NAME}'
+                - name: 'VM/Cluster/{#CLUSTER.NAME}'
+                - name: 'VM/DC/{#DATACENTER.NAME}'
+              templates:
+                - name: 'VMware Hypervisor'
+              macros:
+                - macro: '{$VMWARE.HV.UUID}'
+                  value: '{#HV.UUID}'
+                  description: 'UUID of hypervisor.'
+              tags:
+                - tag: sonic-alert-routing
+                  value: vmware
+              custom_interfaces: 'YES'
+              interfaces:
+                - ip: '{#HV.IP}'
+        - uuid: a7e2f6830442433cbe515e8bd72ee0b8
+          name: 'Discover VMware VMs FQDN'
+          type: SIMPLE
+          key: 'vmware.vm.discovery[{$VMWARE.URL}]'
+          delay: 1h
+          username: '{$VMWARE.USERNAME}'
+          password: '{$VMWARE.PASSWORD}'
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#VM.DNS}'
+                value: (sonic\.net|sontrak\.net)$
+                formulaid: A
+              - macro: '{#VM.DNS}'
+                value: ^$
+                operator: NOT_MATCHES_REGEX
+                formulaid: B
+              - macro: '{#VM.DNS}'
+                value: '^[0-9-]+\.(static|ks)(\.|$)'
+                operator: NOT_MATCHES_REGEX
+                formulaid: C
+              - macro: '{#VM.FOLDER}'
+                value: 'ATTIC|Lab and Testing|Do Not Monitor|Do Not Backup'
+                operator: NOT_MATCHES_REGEX
+                formulaid: D
+              - macro: '{#VM.IP}'
+                value: .
+                formulaid: E
+              - macro: '{#VM.POWERSTATE}'
+                value: 'OFF'
+                operator: NOT_MATCHES_REGEX
+                formulaid: F
+              - macro: '{#VM.TOOLS.STATUS}'
+                value: guestToolsRunning
+                formulaid: G
+          description: 'Discovery of guest virtual machines.'
+          host_prototypes:
+            - uuid: a12e25c500a14fcf99295c207371ca1b
+              host: '{#VM.DNS}'
+              name: '{#VM.NAME}'
+              group_links:
+                - group:
+                    name: ALL
+                - group:
+                    name: 'Virtual machines'
+              group_prototypes:
+                - name: 'Sites/{#DATACENTER.NAME}'
+                - name: 'Sonic/{{#VM.FOLDER}.regsub("^vm$|^ *$", "SOC")}'
+                - name: 'Sonic/{{#VM.FOLDER}.regsub("^vm$|^ *$", "SOC")}/Virtual Machines/VMware'
+                - name: 'VM/all/{#VM.FOLDER}'
+                - name: 'VM/Cluster/{#CLUSTER.NAME}'
+                - name: 'VM/OS/{#VM.GUESTFAMILY}'
+                - name: 'VM/OS/{#VM.GUESTFAMILY}/{#VM.GUESTFULLNAME}'
+              templates:
+                - name: 'VMware Guest'
+              macros:
+                - macro: '{$VMWARE.CLUSTER.NAME}'
+                  value: '{#CLUSTER.NAME}'
+                - macro: '{$VMWARE.DATACENTER.NAME}'
+                  value: '{#DATACENTER.NAME}'
+                - macro: '{$VMWARE.DATASTORE.NAME}'
+                  value: '{#DATASTORE.NAME}'
+                - macro: '{$VMWARE.HV.NAME}'
+                  value: '{#HV.NAME}'
+                - macro: '{$VMWARE.VM.FOLDER}'
+                  value: '{#VM.FOLDER}'
+                - macro: '{$VMWARE.VM.ID}'
+                  value: '{#VM.ID}'
+                - macro: '{$VMWARE.VM.SNAPSHOT.COUNT}'
+                  value: '{#VM.SNAPSHOT.COUNT}'
+                - macro: '{$VMWARE.VM.TOOLS.STATUS}'
+                  value: '{#VM.TOOLS.STATUS}'
+                - macro: '{$VMWARE.VM.UUID}'
+                  value: '{#VM.UUID}'
+                  description: 'UUID of guest virtual machine.'
+              custom_interfaces: 'YES'
+              interfaces:
+                - ip: '{#VM.IP}'
+                  dns: '{#VM.DNS}'
+              inventory_mode: AUTOMATIC
+          overrides:
+            - name: 'Set CentOS/RHEL/Rocky 7+ to get "SOC Linux VMware VM by Agent" template'
+              step: '1'
+              filter:
+                evaltype: AND
+                conditions:
+                  - macro: '{#VM.DNS}'
+                    value: .
+                    formulaid: A
+                  - macro: '{#VM.DNS}'
+                    value: tintri.office.sonic.net
+                    operator: NOT_MATCHES_REGEX
+                    formulaid: B
+                  - macro: '{#VM.GUESTFULLNAME}'
+                    value: '(CentOS|Red Hat Enterprise Linux) ([789]|[1-9][0-9])'
+                    formulaid: C
+                  - macro: '{#VM.IP}'
+                    value: .
+                    formulaid: D
+                  - macro: '{#VM.POWERSTATE}'
+                    value: 'OFF'
+                    operator: NOT_MATCHES_REGEX
+                    formulaid: E
+                  - macro: '{#VM.TOOLS.STATUS}'
+                    value: guestToolsRunning
+                    formulaid: F
+              operations:
+                - operationobject: HOST_PROTOTYPE
+                  operator: REGEXP
+                  value: .
+                  templates:
+                    - name: 'SOC Linux VMware VM Server by Agent'
+                - operationobject: HOST_PROTOTYPE
+                  operator: REGEXP
+                  value: .
+                  templates:
+                    - name: 'Systemd by Zabbix agent 2'
+      tags:
+        - tag: class
+          value: software
+        - tag: target
+          value: vmware
+        - tag: target
+          value: vmware-fqdn
+      macros:
+        - macro: '{$VMWARE.ALARMS.DOWNGRADE}'
+          value: '^(vSphere Health)$'
+          description: 'Regex of vcenter/vsphere/vmware Alarms to downgrade from red to yellow or from yellow to green'
+        - macro: '{$VMWARE.ALARMS.IGNORE}'
+          value: '^(TINTRI_VMstore_EVENTID_10.76.12.10_[LOG-PLATMON-4001]|TINTRI_VMstore_EVENTID_10.76.12.12_[POLICY-SNAP-FAIL-0001|Virtual machine (memory|CPU) usage|vSphere UI Health Alarm|Skyline Health has detected issues in your vSphere environment)$'
+          description: 'Regex of vcenter/vsphere/vmware Alarms to completely ignore'
+        - macro: '{$VMWARE.DATASTORE.LATENCY.READ.AVG}'
+          value: '10'
+          description: 'Alert threshold for datastore read latency'
+        - macro: '{$VMWARE.DATASTORE.LATENCY.READ.HIGH}'
+          value: '50'
+          description: 'Alert threshold for datastore read latency'
+        - macro: '{$VMWARE.DATASTORE.LATENCY.READ.WARN}'
+          value: '5'
+          description: 'Alert threshold for datastore read latency'
+        - macro: '{$VMWARE.DATASTORE.LATENCY.WRITE.AVG}'
+          value: '20'
+          description: 'Alert threshold for datastore write latency'
+        - macro: '{$VMWARE.DATASTORE.LATENCY.WRITE.HIGH}'
+          value: '75'
+          description: 'Alert threshold for datastore write latency'
+        - macro: '{$VMWARE.DATASTORE.LATENCY.WRITE.WARN}'
+          value: '5'
+          description: 'Alert threshold for datastore write latency'
+        - macro: '{$VMWARE.PASSWORD}'
+          type: VAULT
+          value: 'soc-sysadm/monitoring/zabbix.noc/zabbix@vcenter.local:password'
+          description: 'VMware service {$USERNAME} user password'
+        - macro: '{$VMWARE.URL}'
+          value: 'https://vcenter7.sr.sonic.net/sdk'
+          description: 'VMware service (vCenter or ESX hypervisor) SDK URL (https://servername/sdk)'
+        - macro: '{$VMWARE.USERNAME}'
+          type: VAULT
+          value: 'soc-sysadm/monitoring/zabbix.noc/zabbix@vcenter.local:username'
+          description: 'VMware service user name'
+      dashboards:
+        - uuid: 13d73c2a0e5743d9a5fe5b217250f5fb
+          name: 'Vmware datastores'
+          display_period: '600'
+          pages:
+            - widgets:
+                - type: graphprototype
+                  width: '24'
+                  height: '12'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '3'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'VMware FQDN'
+                        name: 'Average read/write latency of the datastore {#DATASTORE}'
+                    - type: INTEGER
+                      name: rows
+                      value: '4'
+                - type: graphprototype
+                  'y': '12'
+                  width: '24'
+                  height: '14'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '3'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'VMware FQDN'
+                        name: 'Free space on datastore {#DATASTORE} (bytes)'
+                    - type: INTEGER
+                      name: rows
+                      value: '5'
+      valuemaps:
+        - uuid: 5e5e3b01ef334bd39441568ebd0c31c0
+          name: 'VMware status'
+          mappings:
+            - value: '0'
+              newvalue: gray
+            - value: '1'
+              newvalue: green
+            - value: '2'
+              newvalue: yellow
+            - value: '3'
+              newvalue: red
+

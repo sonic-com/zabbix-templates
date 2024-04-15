@@ -1,0 +1,88 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: 7df96b18c230490a9a0a9e2307226338
+      name: Templates
+    - uuid: c1d5e259a4e74b0f8d7c1cad2419826a
+      name: 'Templates/Data Center'
+    - uuid: d90714dbec174e4f9313e86612f4d0af
+      name: Templates/Sonic/SOC
+  templates:
+    - uuid: ae86c5b7a8a74498bc16ad586ba4e170
+      template: 'SOC APC UPS by SNMP'
+      name: 'SOC APC UPS by SNMP'
+      templates:
+        - name: 'APC UPS by SNMP'
+      groups:
+        - name: Templates
+        - name: 'Templates/Data Center'
+        - name: Templates/Sonic/SOC
+      macros:
+        - macro: '{$UPS.INPUT_FREQ.MAX.WARN}'
+          value: '61'
+          description: 'Maximum input frequency for trigger expression.'
+        - macro: '{$UPS.INPUT_VOLT.MIN.WARN}'
+          value: '97'
+          description: 'Minimum input voltage for trigger expression.'
+  triggers:
+    - uuid: 3766bad2242b466e97f7adc415cd65ab
+      expression: |
+        find(/SOC APC UPS by SNMP/snmptrap.fallback,#1,"like","SNMPv2-SMI::enterprises.318.0.636")=1
+        or
+        find(/SOC APC UPS by SNMP/snmptrap.fallback,#1,"like","PowerNet-MIB::apcTestTrap")=1
+      recovery_mode: NONE
+      name: 'SNMP trap test'
+      opdata: '{ITEM.LASTVALUE1}'
+      priority: INFO
+      description: |
+        SNMP Trap Test received:
+        
+        {ITEM.LASTVALUE1}
+      type: MULTIPLE
+      manual_close: 'YES'
+    - uuid: ee40186a7abf458c97b54b7c2284d9fc
+      expression: 'find(/SOC APC UPS by SNMP/snmptrap.fallback,#1,"like","PowerNet-MIB::upsOnBattery")=1'
+      recovery_mode: RECOVERY_EXPRESSION
+      recovery_expression: 'find(/SOC APC UPS by SNMP/snmptrap.fallback,#1,"like","PowerNet-MIB::powerRestored")=1'
+      name: 'UPS is On Battery'
+      opdata: '{ITEM.LASTVALUE1}'
+      priority: AVERAGE
+      description: |
+        WARNING: The UPS has switched to battery backup power.
+        
+        {ITEM.LASTVALUE1}
+        
+        upsOnBattery TRAP-TYPE
+           ENTERPRISE apc
+           VARIABLES { mtrapargsString }
+           DESCRIPTION
+              "WARNING: The UPS has switched to battery backup power."
+           --#TYPE "APC UPS: On battery"
+           --#SUMMARY "The UPS has switched to battery backup power."
+           --#SEVERITY WARNING
+           --#TIMEINDEX 1
+           --#HELP ""
+           --#HELPTAG 0
+           --#STATE OPERATIONAL
+           ::= 5
+        
+        Cleared by:
+        powerRestored TRAP-TYPE
+           ENTERPRISE apc
+           VARIABLES { mtrapargsString }
+           DESCRIPTION
+              "INFORMATIONAL: Utility power has been restored."
+           --#TYPE "APC UPS: Utility power restored"
+           --#SUMMARY "Returned from battery backup power; utility power restored."
+           --#SEVERITY INFORMATIONAL
+           --#TIMEINDEX 1
+           --#HELP ""
+           --#HELPTAG 0
+           --#STATE OPERATIONAL
+           ::= 9
+      tags:
+        - tag: scope
+          value: notice
+        - tag: source
+          value: snmptrap
+
